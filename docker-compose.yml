@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: hotel-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: hotel_reservations
+      MYSQL_USER: hotel_user
+      MYSQL_PASSWORD: hotel_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: auth-service
+    ports:
+      - "8000:8000"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DB: hotel_reservations
+      MYSQL_USER: hotel_user
+      MYSQL_PASSWORD: hotel_pass
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  customers-service:
+    build:
+      context: .
+      dockerfile: services/customers/Dockerfile
+    container_name: customers-service
+    ports:
+      - "8001:8000"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DB: hotel_reservations
+      MYSQL_USER: hotel_user
+      MYSQL_PASSWORD: hotel_pass
+      AUTH_SERVICE_URL: http://auth-service:8000
+    depends_on:
+      - mysql
+      - auth-service
+
+  availability-service:
+    build:
+      context: .
+      dockerfile: services/availability/Dockerfile
+    container_name: availability-service
+    ports:
+      - "8002:8000"
+    environment:
+      MYSQL_HOST: mysql
+    depends_on:
+      - mysql
+
+  pricing-service:
+    build:
+      context: .
+      dockerfile: services/pricing/Dockerfile
+    container_name: pricing-service
+    ports:
+      - "8003:8000"
+    environment:
+      MYSQL_HOST: mysql
+    depends_on:
+      - mysql
+
+  payments-service:
+    build:
+      context: .
+      dockerfile: services/payments/Dockerfile
+    container_name: payments-service
+    ports:
+      - "8004:8000"
+    environment:
+      MYSQL_HOST: mysql
+    depends_on:
+      - mysql
+
+  reservations-service:
+    build:
+      context: .
+      dockerfile: services/reservations/Dockerfile
+    container_name: reservations-service
+    ports:
+      - "8005:8000"
+    environment:
+      MYSQL_HOST: mysql
+      CUSTOMERS_SERVICE_URL: http://customers-service:8000
+      AVAILABILITY_SERVICE_URL: http://availability-service:8000
+      PRICING_SERVICE_URL: http://pricing-service:8000
+      PAYMENTS_SERVICE_URL: http://payments-service:8000
+      NOTIFICATIONS_SERVICE_URL: http://notifications-service:8000
+    depends_on:
+      - mysql
+      - customers-service
+      - availability-service
+      - pricing-service
+      - payments-service
+
+  notifications-service:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    container_name: notifications-service
+    ports:
+      - "8006:8000"
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
