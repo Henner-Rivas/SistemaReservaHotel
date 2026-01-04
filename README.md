@@ -1,47 +1,68 @@
-# Sistema de Gestión de Reservas Hoteleras (SOA)
+# Sistema de Reservas Hoteleras (SOA con FastAPI)
 
-Este proyecto implementa una arquitectura SOA con FastAPI para gestionar reservas hoteleras: autenticación, clientes, disponibilidad, tarifas, pagos (simulado), reservas y notificaciones.
-## Servicios
+Proyecto de ejemplo con arquitectura de microservicios (SOA) para gestionar reservas de hotel: autenticación, clientes, disponibilidad, precios, pagos (simulado), reservas y notificaciones. Cada servicio es una API FastAPI independiente con documentación Swagger en `/docs`.
 
-- Auth Service (puerto 8000)
-- Customers Service (puerto 8001)
-- Availability Service (puerto 8002)
-- Pricing Service (puerto 8003)
-- Payments Service (puerto 8004)
-- Reservations Service (puerto 8005)
-- Notifications Service (puerto 8006)
+## Servicios y Puertos
 
-Cada servicio expone Swagger/OpenAPI automáticamente en `/docs` y `/openapi.json`.
+- Auth: 8000
+- Customers: 8001
+- Availability: 8002
+- Pricing: 8003
+- Payments: 8004
+- Reservations: 8005
+- Notifications: 8006
+
 ## Requisitos
 
 - Python 3.11+
 - Docker y Docker Compose
 
-## Configuración rápida
+## Variables de entorno (.env)
 
-1. Crear archivo `.env` basado en `.env.example`.
-2. Construir y levantar con Docker Compose:
+Crear un archivo `.env` en la raíz del proyecto con las claves JWT y, si lo deseas, sobrescribir valores de MySQL (por defecto se usan los del `docker-compose.yml`). Ejemplo:
+
+```env
+# JWT
+JWT_SECRET_KEY=supersecreto-cambialo
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# MySQL (opcional, ya configurado en docker-compose)
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DB=hotel_reservations
+MYSQL_USER=hotel_user
+MYSQL_PASSWORD=hotel_pass
+```
+
+## Ejecución con Docker Compose (recomendado)
+
+1) Construir y levantar todos los servicios:
 
 ```bash
 docker compose up -d --build
 ```
 
-3. Acceder a Swagger de cada servicio:
-  - Auth: http://localhost:8000/docs
-  - Customers: http://localhost:8001/docs
-  - Availability: http://localhost:8002/docs
-  - Pricing: http://localhost:8003/docs
-  - Payments: http://localhost:8004/docs
-  - Reservations: http://localhost:8005/docs
-  - Notifications: http://localhost:8006/docs
+2) Verificar salud y documentación:
 
-## Estructura
+- Auth: http://localhost:8000/health | http://localhost:8000/docs
+- Customers: http://localhost:8001/health | http://localhost:8001/docs
+- Availability: http://localhost:8002/health | http://localhost:8002/docs
+- Pricing: http://localhost:8003/health | http://localhost:8003/docs
+- Payments: http://localhost:8004/health | http://localhost:8004/docs
+- Reservations: http://localhost:8005/health | http://localhost:8005/docs
+- Notifications: http://localhost:8006/health | http://localhost:8006/docs
 
-Ver especificación detallada en el PR y en este repositorio. Los módulos compartidos se encuentran en `shared/` y son incluidos en las imágenes de cada servicio usando el contexto raíz en Docker.
+3) Apagar los servicios:
 
-## Desarrollo local (opcional)
+```bash
+docker compose down
+```
 
-Instalar dependencias:
+## Ejecución local (sin Docker)
+
+1) Crear entorno virtual e instalar dependencias:
 
 ```bash
 python -m venv .venv
@@ -49,356 +70,91 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Ejecutar un servicio (ejemplo Auth):
+2) Asegúrate de tener una instancia de MySQL accesible y configura `.env` según corresponda.
+
+3) Levantar un servicio (ejemplo: Auth):
 
 ```bash
 uvicorn services.auth.main:app --reload --port 8000
 ```
 
+Repite con los demás servicios cambiando el módulo y el puerto.
+
+## Flujo básico de uso
+
+1) Registro y login (Auth):
+
+- Registrar usuario: `POST /api/v1/auth/register`
+- Login: `POST /api/v1/auth/login` → devuelve `access_token` y `refresh_token`
+
+2) Consumir endpoints protegidos:
+
+- Enviar `Authorization: Bearer <access_token>` en llamadas a otros servicios (Availability, Customers, etc.).
+
+3) Disponibilidad de habitaciones (Availability):
+
+- Buscar: `POST /api/v1/availability/search`
+- Bloquear: `POST /api/v1/availability/block`
+- Liberar: `DELETE /api/v1/availability/block/{bloqueo_id}`
+- Confirmar: `POST /api/v1/availability/confirm`
+
+Otros servicios (pricing, payments, reservations, notifications) siguen una estructura similar y exponen su documentación en `/docs`.
+
+## Base de datos
+
+- Se usa MySQL 8 con credenciales definidas en `docker-compose.yml`.
+- Los servicios leen la configuración desde `shared/database.py` y `.env`.
+- Al iniciar Availability, se crean tablas y se siembran habitaciones de ejemplo si no existen.
+
+## Seguridad
+
+- JWT centralizado mediante `shared/security.py`.
+- Las rutas protegidas requieren `Authorization: Bearer <token>`.
+- La emisión de tokens se realiza en `services/auth/security.py`.
+
 ## Tests
+
+Ejecutar pruebas:
 
 ```bash
 pytest -q
 ```
 
-## Notas
+Incluye tests de salud y disponibilidad (carpeta `tests/`).
 
-- Configuración de DB via variables de entorno, usando MySQL 8.
-- Seguridad JWT centralizada en `shared/security.py`.
-- Event Bus mejorado en `shared/events.py`.
-# PROYECTO: Sistema de Gestión de Reservas Hoteleras - Arquitectura SOA
+## Estructura del repositorio
 
-Eres un arquitecto de software experto en SOA (Service-Oriented Architecture) y desarrollo con Python/FastAPI. Tu tarea es implementar un sistema completo de gestión de reservas hoteleras siguiendo los diseños y especificaciones proporcionados.
-
-## 📋 CONTEXTO DEL PROYECTO
-
-Sistema empresarial para cadena hotelera que gestiona reservas, pagos, disponibilidad, clientes y notificaciones mediante arquitectura SOA con servicios independientes y comunicación orientada a eventos.
-
-## 🎯 OBJETIVOS
-
-Implementar los 6 servicios core del sistema con:
-- ✅ API REST completa con FastAPI y documentación OpenAPI
-- ✅ Persistencia en MySQL con SQLAlchemy
-- ✅ Sistema de eventos para comunicación asíncrona
-- ✅ Autenticación JWT centralizada
-- ✅ Validaciones robustas con Pydantic
-- ✅ Pruebas unitarias, integración y rendimiento con Pytest
-- ✅ Dockerización de todos los servicios
-
-## 🏗️ ARQUITECTURA DEL SISTEMA
-
-### Servicios a Implementar (Prioridad)
-
-1. **Servicio de Autenticación (Auth Service)** - NUEVO ⭐
-   - Gestión de usuarios y roles
-   - Generación y validación de tokens JWT
-   - Endpoints: registro, login, refresh token, logout
-
-2. **Servicio de Clientes (Customer Service)** - NUEVO ⭐
-   - CRUD de perfiles de clientes
-   - Historial de reservas del cliente
-   - Endpoints: crear, obtener, actualizar, listar clientes
-
-3. **Servicio de Disponibilidad (Availability Service)** - NUEVO ⭐
-   - Consultar disponibilidad de habitaciones
-   - Bloqueo temporal (15 min) durante reserva
-   - Liberar/confirmar bloqueos
-   - Endpoints: consultar, bloquear, liberar, confirmar
-
-4. **Servicio de Tarifas (Pricing Service)** - NUEVO ⭐
-   - Cálculo de precios dinámicos
-   - Aplicación de descuentos y promociones
-   - Validación de cupones
-   - Endpoints: calcular precio, validar cupón
-
-5. **Servicio de Pagos (Payment Service)** - NUEVO ⭐ (SIMULADO)
-   - Procesamiento simulado de pagos
-   - Aprobación/rechazo aleatorio con reglas
-   - Gestión de reembolsos simulados
-   - Endpoints: procesar pago, reembolsar, consultar transacción
-
-6. **Servicio de Reservas (Reservation Service)** - MEJORAR ✨
-   - CRUD completo de reservas
-   - Orquestación de otros servicios
-   - Gestión de políticas de cancelación
-   - Endpoints: crear, obtener, listar, modificar, cancelar
-
-7. **Servicio de Notificaciones (Notification Service)** - MEJORAR ✨
-   - Sistema orientado a eventos
-   - Envío simulado de emails
-   - Suscripción a eventos: reserva.creada, reserva.cancelada, pago.aprobado, pago.rechazado
-
-## 📐 ESTRUCTURA DEL PROYECTO
 ```
-hotel-reservations-soa/
-│
-├── services/
-│   ├── auth/                    # 🆕 Servicio de Autenticación
-│   │   ├── __init__.py
-│   │   ├── main.py             # FastAPI app
-│   │   ├── models.py           # Modelos SQLAlchemy (Usuario, Role)
-│   │   ├── schemas.py          # Schemas Pydantic
-│   │   ├── service.py          # Lógica de negocio
-│   │   ├── repository.py       # Acceso a datos
-│   │   ├── security.py         # JWT utilities
-│   │   ├── config.py
-│   │   └── Dockerfile
-│   │
-│   ├── customers/               # 🆕 Servicio de Clientes
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── models.py           # Modelo Cliente
-│   │   ├── schemas.py
-│   │   ├── service.py
-│   │   ├── repository.py
-│   │   ├── config.py
-│   │   └── Dockerfile
-│   │
-│   ├── availability/            # 🆕 Servicio de Disponibilidad
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── models.py           # Modelos: Habitacion, Bloqueo
-│   │   ├── schemas.py
-│   │   ├── service.py
-│   │   ├── repository.py
-│   │   ├── config.py
-│   │   └── Dockerfile
-│   │
-│   ├── pricing/                 # 🆕 Servicio de Tarifas
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── models.py           # Modelos: Tarifa, Promocion
-│   │   ├── schemas.py
-│   │   ├── service.py
-│   │   ├── rules_engine.py     # Motor de reglas de pricing
-│   │   ├── config.py
-│   │   └── Dockerfile
-│   │
-│   ├── payments/                # 🆕 Servicio de Pagos (SIMULADO)
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── models.py           # Modelo Transaccion
-│   │   ├── schemas.py
-│   │   ├── service.py
-│   │   ├── simulator.py        # Simulador de gateway de pagos
-│   │   ├── config.py
-│   │   └── Dockerfile
-│   │
-│   ├── reservations/            # ✨ MEJORAR EXISTENTE
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   ├── service.py          # Agregar orquestación completa
-│   │   ├── repository.py
-│   │   ├── orchestrator.py     # 🆕 Orquestador de creación de reserva
-│   │   ├── events.py
-│   │   ├── config.py
-│   │   └── Dockerfile
-│   │
-│   └── notifications/           # ✨ MEJORAR EXISTENTE
-│       ├── __init__.py
-│       ├── main.py
-│       ├── service.py          # Expandir con más eventos
-│       ├── templates/          # 🆕 Templates de emails
-│       ├── config.py
-│       └── Dockerfile
-│
-├── shared/                      # Código compartido
-│   ├── __init__.py
-│   ├── database.py             # Configuración MySQL
-│   ├── events.py               # Event Bus mejorado
-│   ├── exceptions.py           # Excepciones personalizadas
-│   ├── security.py             # Middleware JWT
-│   └── http_client.py          # 🆕 Cliente HTTP para comunicación inter-servicios
-│
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py             # Fixtures compartidos
-│   ├── test_auth.py            # 🆕
-│   ├── test_customers.py       # 🆕
-│   ├── test_availability.py   # 🆕
-│   ├── test_pricing.py         # 🆕
-│   ├── test_payments.py        # 🆕
-│   ├── test_reservations.py   # Expandir
-│   ├── test_notifications.py  # Expandir
-│   ├── test_integration.py    # Tests de flujo completo
-│   └── test_performance.py    # Tests de carga
-│
-├── docker-compose.yml          # Orquestación de servicios
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
+services/
+  auth/           # Autenticación (JWT, registro, login)
+  customers/      # Clientes
+  availability/   # Disponibilidad y bloqueos de habitaciones
+  pricing/        # Precios y reglas de tarifas
+  payments/       # Pagos (simulado)
+  reservations/   # Orquestación de reservas
+  notifications/  # Notificaciones de eventos
+shared/           # Módulos compartidos (DB, seguridad, eventos, HTTP)
+tests/            # Pruebas (salud, disponibilidad)
+docker-compose.yml
+requirements.txt
+README.md
 ```
 
-## 🔧 ESPECIFICACIONES TÉCNICAS
+## Troubleshooting
 
-### Stack Tecnológico
-- **Python**: 3.11+
-- **Framework**: FastAPI 0.104+
-- **Base de Datos**: MySQL 8.0
-- **ORM**: SQLAlchemy 2.0+
-- **Validación**: Pydantic 2.5+
-- **Testing**: Pytest 7.4+
-- **Servidor**: Uvicorn
-- **Contenedores**: Docker + Docker Compose
+- Si MySQL no levanta, borra el volumen y vuelve a crear:
 
-### Dependencias Principales (requirements.txt)
-```txt
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-sqlalchemy==2.0.23
-pymysql==1.1.0
-python-dotenv==1.0.0
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-httpx==0.25.0
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
+```bash
+docker compose down -v
+docker compose up -d --build
 ```
 
-## 📝 ESPECIFICACIONES DETALLADAS POR SERVICIO
+- Error 401 en APIs: asegúrate de enviar `Authorization: Bearer <access_token>` válido.
+- Cambia `JWT_SECRET_KEY` en `.env` para producción.
 
-### 1. SERVICIO DE AUTENTICACIÓN (Auth Service)
+## Licencia
 
-**Puerto**: 8000
-
-**Base de Datos**: Tabla `usuarios`, `roles`
-
-**Modelo Usuario (SQLAlchemy)**:
-```python
-class UsuarioDB(Base):
-    __tablename__ = "usuarios"
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    usuario_id = Column(String(50), unique=True, index=True)
-    email = Column(String(255), unique=True, index=True)
-    username = Column(String(100), unique=True, index=True)
-    password_hash = Column(String(255))
-    nombre_completo = Column(String(255))
-    telefono = Column(String(20), nullable=True)
-    rol = Column(Enum('admin', 'staff', 'cliente'), default='cliente')
-    activo = Column(Boolean, default=True)
-    creado_en = Column(DateTime, server_default=func.now())
-    ultimo_login = Column(DateTime, nullable=True)
-```
-
-**Endpoints Requeridos**:
-```python
-POST   /api/v1/auth/register          # Registrar nuevo usuario
-POST   /api/v1/auth/login             # Login (retorna access + refresh token)
-POST   /api/v1/auth/refresh           # Refrescar access token
-POST   /api/v1/auth/logout            # Logout (invalidar token)
-GET    /api/v1/auth/me                # Obtener info del usuario actual
-PUT    /api/v1/auth/me                # Actualizar perfil
-GET    /health                        # Health check
-```
-
-**Schemas Pydantic**:
-```python
-class RegistroRequest(BaseModel):
-    email: EmailStr
-    username: str = Field(min_length=3, max_length=50)
-    password: str = Field(min_length=8)
-    nombre_completo: str
-    telefono: Optional[str] = None
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-class UsuarioResponse(BaseModel):
-    usuario_id: str
-    email: str
-    username: str
-    nombre_completo: str
-    rol: str
-    activo: bool
-```
-
-**Seguridad JWT**:
-- Secret key: Variable de entorno `JWT_SECRET_KEY`
-- Algoritmo: HS256
-- Access token expira en: 30 minutos
-- Refresh token expira en: 7 días
-- Incluir en payload: `usuario_id`, `username`, `rol`, `exp`, `iat`
-
-**Reglas de Negocio**:
-- Password debe tener mínimo 8 caracteres, 1 mayúscula, 1 número
-- Email debe ser único
-- Username debe ser único
-- Por defecto, usuarios nuevos tienen rol "cliente"
-- Hash passwords con bcrypt (passlib)
-
----
-
-### 2. SERVICIO DE CLIENTES (Customer Service)
-
-**Puerto**: 8001
-
-**Base de Datos**: Tabla `clientes`
-
-**Modelo Cliente (SQLAlchemy)**:
-```python
-class ClienteDB(Base):
-    __tablename__ = "clientes"
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    cliente_id = Column(String(50), unique=True, index=True)
-    usuario_id = Column(String(50), index=True, nullable=True)  # Relación con Auth
-    nombre_completo = Column(String(255))
-    email = Column(String(255), unique=True, index=True)
-    telefono = Column(String(20))
-    fecha_nacimiento = Column(Date, nullable=True)
-    direccion = Column(String(500), nullable=True)
-    ciudad = Column(String(100), nullable=True)
-    pais = Column(String(100), nullable=True)
-    documento_identidad = Column(String(50), nullable=True)
-    tipo_documento = Column(Enum('dni', 'pasaporte', 'cedula'), nullable=True)
-    creado_en = Column(DateTime, server_default=func.now())
-    actualizado_en = Column(DateTime, onupdate=func.now())
-```
-
-**Endpoints Requeridos**:
-```python
-POST   /api/v1/customers              # Crear cliente
-GET    /api/v1/customers/{cliente_id} # Obtener cliente
-PUT    /api/v1/customers/{cliente_id} # Actualizar cliente
-GET    /api/v1/customers              # Listar clientes (paginado)
-GET    /api/v1/customers/{cliente_id}/reservations  # Historial de reservas
-GET    /health                        # Health check
-```
-
-**Schemas Principales**:
-```python
-class CrearClienteRequest(BaseModel):
-    usuario_id: Optional[str] = None
-    nombre_completo: str = Field(min_length=3)
-    email: EmailStr
-    telefono: str = Field(pattern=r'^\+?[0-9]{10,15}$')
-    fecha_nacimiento: Optional[date] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    pais: Optional[str] = None
-
-class ClienteResponse(BaseModel):
-    cliente_id: str
-    nombre_completo: str
-    email: str
-    telefono: str
-    ciudad: Optional[str]
-    pais: Optional[str]
+Proyecto de demostración educativo.
     creado_en: datetime
 ```
 
