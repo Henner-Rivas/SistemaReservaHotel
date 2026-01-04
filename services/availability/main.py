@@ -121,39 +121,40 @@ def on_startup():
 
     asyncio.create_task(cleaner())
 
-    # Seed example rooms if empty
+    # Seed example rooms if empty (insert 10 demo rooms)
     from shared.database import SessionLocal
     from sqlalchemy import select
     db = SessionLocal()
     try:
         from services.availability.models import HabitacionDB
-        count = list(db.scalars(select(HabitacionDB))).__len__()
-        if count == 0:
-            demo = [
-                HabitacionDB(
-                    habitacion_id="HAB001",
-                    hotel_id="HOTEL1",
-                    numero="101",
-                    tipo="standard",
-                    piso=1,
-                    capacidad_maxima=2,
-                    precio_base=100.00,
-                    caracteristicas=["wifi", "tv"],
-                    activa=True,
-                ),
-                HabitacionDB(
-                    habitacion_id="HAB002",
-                    hotel_id="HOTEL1",
-                    numero="102",
-                    tipo="deluxe",
-                    piso=1,
-                    capacidad_maxima=3,
-                    precio_base=180.00,
-                    caracteristicas=["wifi", "tv", "mini-bar"],
-                    activa=True,
-                ),
-            ]
-            for r in demo:
+        existing = list(db.scalars(select(HabitacionDB)))
+        if len(existing) == 0:
+            demo_rooms = []
+            # Generate HAB001..HAB010 with a mix of types
+            for i in range(1, 11):
+                hab_id = f"HAB{str(i).zfill(3)}"
+                numero = str(100 + i)
+                # Cycle types: standard, deluxe, suite
+                tipos = ["standard", "deluxe", "suite"]
+                tipo = tipos[(i - 1) % len(tipos)]
+                piso = 1 + ((i - 1) // 4)
+                capacidad = 2 if tipo == "standard" else (3 if tipo == "deluxe" else 4)
+                precio = 100.00 if tipo == "standard" else (180.00 if tipo == "deluxe" else 250.00)
+                caracteristicas = ["wifi", "tv"] + (["mini-bar"] if tipo != "standard" else [])
+                demo_rooms.append(
+                    HabitacionDB(
+                        habitacion_id=hab_id,
+                        hotel_id="HOTEL1",
+                        numero=numero,
+                        tipo=tipo,
+                        piso=piso,
+                        capacidad_maxima=capacidad,
+                        precio_base=precio,
+                        caracteristicas=caracteristicas,
+                        activa=True,
+                    )
+                )
+            for r in demo_rooms:
                 db.add(r)
             db.commit()
     finally:
