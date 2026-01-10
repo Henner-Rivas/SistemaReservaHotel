@@ -789,54 +789,6 @@ def test_flujo_completo_crear_reserva():
 
 ---
 
-## 📊 ACTIVIDADES A COMPLETAR
-
-### Actividad 13: Desarrollo de Servicios
-- ✅ Implementar los 7 servicios con FastAPI
-- ✅ Persistencia MySQL con SQLAlchemy
-- ✅ Validación con Pydantic
-- ✅ Documentación OpenAPI automática
-- ✅ Dockerización
-
-### Actividad 14: Servicios Orientados a Eventos
-- ✅ Event Bus mejorado con historial
-- ✅ Servicio de Notificaciones suscrito a 5+ eventos
-- ✅ Templates HTML para emails
-- ✅ Logging de eventos para auditoría
-
-### Actividad 15: Pruebas
-- ✅ Tests unitarios por servicio (cobertura > 80%)
-- ✅ Tests de integración de flujos completos
-- ✅ Tests de rendimiento con métricas
-- ✅ Documentar problemas encontrados y soluciones
-
----
-
-## 🎯 CRITERIOS DE ÉXITO
-
-El proyecto está completo cuando:
-- [x] Los 7 servicios están implementados y funcionando
-- [x] Todos los servicios tienen tests con cobertura > 80%
-- [x] El flujo completo de crear reserva funciona end-to-end
-- [x] El sistema de eventos funciona correctamente
-- [x] La documentación OpenAPI está completa
-- [x] Docker Compose levanta todos los servicios sin errores
-- [x] Los tests de integración pasan exitosamente
-- [x] Hay logging estructurado en todos los servicios
-
----
-
-## 📌 NOTAS IMPORTANTES
-
-1. **Código limpio**: Seguir PEP 8, type hints, docstrings
-2. **Manejo de errores**: Try-except en todos los endpoints
-3. **Logging**: Usar logging estándar de Python
-4. **Variables de entorno**: Usar pydantic-settings
-5. **Seguridad**: NUNCA hardcodear secrets, usar .env
-6. **Commits**: Commits atómicos con mensajes descriptivos
-7. **Documentación**: Cada endpoint debe tener docstring completo
-
----
 
 ## 🚀 ORDEN DE IMPLEMENTACIÓN SUGERIDO
 
@@ -864,16 +816,3 @@ El proyecto está completo cuando:
    - Tests de rendimiento
 
 ---
-
-## 🎓 ENTREGABLES
-
-1. Código fuente completo en repositorio Git
-2. README.md con instrucciones de instalación y uso
-3. Docker Compose funcional
-4. Colección Postman/Insomnia con ejemplos de requests
-5. Reporte de cobertura de tests
-6. Documento con problemas encontrados y soluciones (Actividad 15)
-
----
-
-¡Manos a la obra! 🚀

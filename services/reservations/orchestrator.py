@@ -38,17 +38,36 @@ class CrearReservaOrchestrator:
             },
             token,
         )
-        # 3. Bloquear habitación (temporal)
+        # 3. Buscar disponibilidad y elegir una habitación si no viene especificada
+        habitacion_id = payload.get("habitacion_id")
+        if not habitacion_id:
+            dispo = await self.client.check_availability(
+                {
+                    "hotel_id": payload["hotel_id"],
+                    "fecha_inicio": payload["fecha_inicio"],
+                    "fecha_fin": payload["fecha_fin"],
+                    "tipo_habitacion": payload.get("tipo_habitacion"),
+                    "numero_huespedes": payload.get("numero_huespedes", 2),
+                    "precio_maximo": None,
+                },
+                token,
+            )
+            habitaciones = dispo.get("habitaciones", [])
+            if not habitaciones:
+                raise ValueError("No hay habitaciones disponibles para el rango solicitado")
+            habitacion_id = habitaciones[0]["habitacion_id"]
+
+        # 4. Bloquear habitación (temporal)
         block = await self.client.availability_block(
             {
-                "habitacion_id": payload.get("habitacion_id", ""),
+                "habitacion_id": habitacion_id,
                 "fecha_inicio": payload["fecha_inicio"],
                 "fecha_fin": payload["fecha_fin"],
                 "duracion_minutos": 15,
             },
             token,
         )
-        # 4. Procesar pago
+        # 5. Procesar pago
         pago = await self.client.process_payment(
             {
                 "cliente_id": payload["cliente_id"],
@@ -59,4 +78,4 @@ class CrearReservaOrchestrator:
             },
             token,
         )
-        return {"cliente": cliente, "precio": precio, "pago": pago, "bloqueo": block, "estado": "CREADA"}
+        return {"cliente": cliente, "precio": precio, "pago": pago, "bloqueo": block, "estado": "CREADA", "habitacion_id": habitacion_id}

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import Dict
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from shared.events import event_bus
 from shared.security import verify_token
 from shared.database import Base, engine, get_db
 from services.reservations.orchestrator import CrearReservaOrchestrator
-from services.auth.security import create_access_token
+from shared.security import create_access_token
 from services.reservations.schemas import CrearReservaRequest, ReservaResponse
 from services.reservations.service import (
     cancel_reservation,
@@ -39,19 +39,22 @@ def health() -> Dict[str, str]:
 
 
 @app.post("/api/v1/reservations")
-async def create_reservation(payload: CrearReservaRequest, current_user: dict = Depends(verify_token)) -> ReservaResponse:
 async def create_reservation(payload: CrearReservaRequest, current_user: dict = Depends(verify_token), db: Session = Depends(get_db)) -> ReservaResponse:
-    orch = CrearReservaOrchestrator()
-    # Generar un token interno para llamadas a otros servicios
-    internal_token = create_access_token({
-        "usuario_id": current_user["usuario_id"],
-        "username": current_user["username"],
-        "rol": current_user.get("rol", "cliente"),
-    })
-    orchestration = await orch.crear_reserva(payload.model_dump(), token=internal_token)
-    reserva = await create_reservation_flow(db, {**payload.model_dump(), **orchestration}, internal_token)
-    event_bus.publicar("reserva.creada", {"cliente_id": payload.cliente_id, "hotel_id": payload.hotel_id})
-    return ReservaResponse(estado="CONFIRMADA", detalles={"reserva_id": reserva.reserva_id})
+    try:
+        orch = CrearReservaOrchestrator()
+        # Generar un token interno para llamadas a otros servicios
+        internal_token = create_access_token({
+            "usuario_id": current_user["usuario_id"],
+            "username": current_user["username"],
+            "rol": current_user.get("rol", "cliente"),
+        })
+        orchestration = await orch.crear_reserva(payload.model_dump(), token=internal_token)
+        reserva = await create_reservation_flow(db, {**payload.model_dump(), **orchestration}, internal_token)
+        event_bus.publicar("reserva.creada", {"cliente_id": payload.cliente_id, "hotel_id": payload.hotel_id})
+        return ReservaResponse(estado="CONFIRMADA", detalles={"reserva_id": reserva.reserva_id})
+    except Exception as e:
+        # Map known issues to 400 to avoid 500 noise in client mistakes
+        raise HTTPException(status_code=400, detail=f"Error al crear reserva: {str(e)}")
 
 
 @app.get("/api/v1/reservations/{reserva_id}")

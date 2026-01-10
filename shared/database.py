@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     MYSQL_DB: str = "hotel_reservations"
     MYSQL_USER: str = "hotel_user"
     MYSQL_PASSWORD: str = "hotel_pass"
+    DATABASE_URL: Optional[str] = None
 
     class Config:
         env_file = ".env"
@@ -36,7 +37,17 @@ def get_mysql_url() -> str:
     return f"mysql+pymysql://{user}:{pwd}@{host}:{port}/{db}"
 
 
-DATABASE_URL = get_mysql_url()
+# Seleccionar URL de base de datos
+# Prioridad:
+# 1) settings.DATABASE_URL (por entorno)
+# 2) En pruebas (PYTEST_CURRENT_TEST), usar SQLite local para evitar dependencia externa
+# 3) MySQL por defecto
+if settings.DATABASE_URL:
+    DATABASE_URL = settings.DATABASE_URL
+elif os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("USE_SQLITE_FOR_TESTS") == "1":
+    DATABASE_URL = "sqlite+pysqlite:///./test.db"
+else:
+    DATABASE_URL = get_mysql_url()
 
 # Engine and Session
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
