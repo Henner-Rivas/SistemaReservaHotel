@@ -1,6 +1,8 @@
+import os
 from datetime import date
 from fastapi.testclient import TestClient
 
+os.environ["USE_SQLITE_FOR_TESTS"] = "1"
 from services.auth.main import app as auth_app
 from services.availability.main import app as availability_app
 from shared.database import Base, engine, SessionLocal
